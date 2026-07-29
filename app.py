@@ -34,7 +34,7 @@ def inicializar_motor_rag():
             return None, None, "Error: No se pudo fragmentar el texto de los manuales."
 
         # 3. Vectorizar dejando que la librería tome la llave del sistema automáticamente
-        embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
         vectorstore = FAISS.from_documents(splits, embeddings)
         
         # 4. Configurar la IA 
