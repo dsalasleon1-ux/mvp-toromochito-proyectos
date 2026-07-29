@@ -39,7 +39,7 @@ def inicializar_motor_rag():
         vectorstore = FAISS.from_documents(splits, embeddings)
         
         # 4. Configurar la IA (Google solo se encargará del chat)
-        llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0)
+        llm = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0)
         
         return vectorstore.as_retriever(search_kwargs={"k": 4}), llm, "OK"
     except Exception as e:
