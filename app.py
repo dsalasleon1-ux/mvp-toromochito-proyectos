@@ -38,7 +38,7 @@ Nunca inventes información ni compartas datos comerciales confidenciales.
 Bajo el principio Human-in-the-Loop, asistes técnicamente al equipo de proyectos y proveedores bajo los estándares de cumplimiento minero."""
 
 # ============================================================
-# HELPER: Subir PDFs locales a Gemini
+# HELPER: Subir PDFs locales a Gemini con Mime Type explícito
 # ============================================================
 def _cargar_docs_locales():
     docs_paths = []
@@ -52,7 +52,11 @@ def _subir_archivos_a_gemini(paths):
     archivos_subidos = []
     for path in paths:
         with open(path, "rb") as f:
-            file_obj = client.files.upload(file=f)
+            # Especificamos explícitamente que es un archivo PDF para evitar el error de tipo
+            file_obj = client.files.upload(
+                file=f,
+                config=types.UploadFileConfig(mime_type="application/pdf")
+            )
             archivos_subidos.append(file_obj)
     return archivos_subidos
 
@@ -106,9 +110,7 @@ if prompt_usuario := st.chat_input("Escribe tu consulta (Ej. Pasos para habilita
                     ),
                 )
                 
-                # FILTRO DE SEGURIDAD: Extraemos exclusivamente el texto limpio de la respuesta
                 texto_respuesta = response.candidates[0].content.parts[0].text
-                
                 contenedor_respuesta.markdown(texto_respuesta)
                 respuesta_final = texto_respuesta
                 
