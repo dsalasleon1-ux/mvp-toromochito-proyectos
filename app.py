@@ -29,7 +29,7 @@ def inicializar_motor_rag():
     splits = text_splitter.split_documents(docs)
     
     # Vectorizar usando el modelo gratuito de Google
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
     vectorstore = FAISS.from_documents(splits, embeddings)
     
     # Configurar el motor principal de inteligencia artificial
