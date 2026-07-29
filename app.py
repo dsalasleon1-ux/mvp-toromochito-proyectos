@@ -2,13 +2,14 @@ import streamlit as st
 import os
 from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.vectorstores import FAISS
 
 st.set_page_config(page_title="Toromochito 2.0 MVP", page_icon="🤖", layout="wide")
 st.title("🤖 Asistente Toromochito 2.0 (Prueba en Vivo)")
 
-# Verificación de la llave a nivel de sistema (Nativo)
+# Verificación de la llave a nivel de sistema
 if "GOOGLE_API_KEY" not in os.environ:
     try:
         os.environ["GOOGLE_API_KEY"] = st.secrets["GOOGLE_API_KEY"]
@@ -33,16 +34,16 @@ def inicializar_motor_rag():
         if not splits:
             return None, None, "Error: No se pudo fragmentar el texto de los manuales."
 
-        # 3. Vectorizar (Usando la sintaxis exacta y actual del modelo de Google)
-        embeddings = GoogleGenerativeAIEmbeddings(model="text-embedding-004")
+        # 3. Vectorizar (Usando HuggingFace de forma local, 100% gratuito e inmune a bloqueos de Google)
+        embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
         vectorstore = FAISS.from_documents(splits, embeddings)
         
-        # 4. Configurar la IA 
+        # 4. Configurar la IA (Google solo se encargará del chat)
         llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0)
         
         return vectorstore.as_retriever(search_kwargs={"k": 4}), llm, "OK"
     except Exception as e:
-        return None, None, f"Error de conexión con Google: {str(e)}"
+        return None, None, f"Error del sistema: {str(e)}"
 
 # Inicialización del motor
 if os.path.exists("docs") and os.listdir("docs"):
