@@ -1,62 +1,80 @@
-import streamlit as st
 import os
-from langchain_community.document_loaders import PyPDFDirectoryLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_community.vectorstores import FAISS
+import tempfile
+import streamlit as st
+from google import genai
+from google.genai import types
 
-st.set_page_config(page_title="Toromochito 2.0 MVP", page_icon="🤖", layout="wide")
-st.title("🤖 Asistente Toromochito 2.0 (Prueba en Vivo)")
+# ============================================================
+# CONFIGURACIÓN DE PÁGINA
+# ============================================================
+st.set_page_config(
+    page_title="Asistente Toromochito 2.0",
+    page_icon="🤖",
+    layout="wide",
+)
 
-# Verificación de la llave a nivel de sistema
-if "GOOGLE_API_KEY" not in os.environ:
+# ============================================================
+# API KEY (desde Streamlit Secrets)
+# ============================================================
+def _get_api_key():
     try:
-        os.environ["GOOGLE_API_KEY"] = st.secrets["GOOGLE_API_KEY"]
-    except:
-        st.error("Falta configurar GOOGLE_API_KEY en los Secrets de Streamlit.")
-        st.stop()
+        return st.secrets["GOOGLE_API_KEY"]
+    except Exception:
+        pass
+    return os.environ.get("GOOGLE_API_KEY", "")
 
-@st.cache_resource(show_spinner=False)
-def inicializar_motor_rag():
-    try:
-        # 1. Leer los manuales PDF
-        loader = PyPDFDirectoryLoader("docs")
-        docs = loader.load()
-        
-        if not docs:
-            return None, None, "Error: La carpeta 'docs' está vacía o contiene archivos sin texto leíble."
-        
-        # 2. Cortar los textos
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
-        splits = text_splitter.split_documents(docs)
-        
-        if not splits:
-            return None, None, "Error: No se pudo fragmentar el texto de los manuales."
+API_KEY = _get_api_key()
+client = genai.Client(api_key=API_KEY) if API_KEY else None
 
-        # 3. Vectorizar (Usando HuggingFace de forma local, 100% gratuito e inmune a bloqueos de Google)
-        embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-        vectorstore = FAISS.from_documents(splits, embeddings)
-        
-        # 4. Configurar la IA (Google solo se encargará del chat)
-        llm = ChatGoogleGenerativeAI(model="gemini-flash-latest", temperature=0)
-        
-        return vectorstore.as_retriever(search_kwargs={"k": 4}), llm, "OK"
-    except Exception as e:
-        return None, None, f"Error del sistema: {str(e)}"
+MODEL_ID = "gemini-2.5-flash"
 
-# Inicialización del motor
-if os.path.exists("docs") and os.listdir("docs"):
-    with st.spinner("Procesando manuales de Compras y Contratos..."):
-        retriever, llm, status = inicializar_motor_rag()
-        if status != "OK":
-            st.error(status)
-            st.stop()
-else:
-    st.error("Por favor, verifica que la carpeta 'docs' tenga los manuales en formato PDF.")
+# ============================================================
+# SYSTEM PROMPT CORPORATIVO
+# ============================================================
+SYSTEM_PROMPT = """Eres Toromochito, el asistente virtual de Minera Chinalco Perú S.A. para el área de Compras y Contratos Proyectos.
+Tu función es responder exclusivamente consultas sobre los procedimientos basándote SOLAMENTE en el contenido de los manuales y documentos normativos proporcionados.
+Si la respuesta no está en los documentos, indícale al usuario que contacte al comprador responsable.
+Nunca inventes información ni compartas datos comerciales confidenciales. 
+Bajo el principio Human-in-the-Loop, asistes técnicamente al equipo de proyectos y proveedores bajo los estándares de cumplimiento minero."""
+
+# ============================================================
+# HELPER: Subir PDFs locales a Gemini
+# ============================================================
+def _cargar_docs_locales():
+    docs_paths = []
+    if os.path.exists("docs"):
+        for archivo in os.listdir("docs"):
+            if archivo.lower().endswith(".pdf"):
+                docs_paths.append(os.path.join("docs", archivo))
+    return docs_paths
+
+def _subir_archivos_a_gemini(paths):
+    archivos_subidos = []
+    for path in paths:
+        with open(path, "rb") as f:
+            file_obj = client.files.upload(file=f)
+            archivos_subidos.append(file_obj)
+    return archivos_subidos
+
+# ============================================================
+# INTERFAZ STREAMLIT
+# ============================================================
+st.markdown("# 🤖 Asistente Toromochito 2.0 (Prueba en Vivo)")
+st.markdown(
+    "**Minera Chinalco Perú S.A.** · Área de Compras y Contratos Proyectos · "
+    "Motor Cognitivo Multimodal Nativo"
+)
+st.divider()
+
+if client is None:
+    st.error("⚠️ Falta configurar la clave `GOOGLE_API_KEY` en Streamlit Secrets.")
     st.stop()
 
-# Interfaz de Chat
+archivos_locales = _cargar_docs_locales()
+if not archivos_locales:
+    st.error("⚠️ No se encontraron archivos PDF en la carpeta 'docs' de tu repositorio.")
+    st.stop()
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -71,28 +89,31 @@ if prompt_usuario := st.chat_input("Escribe tu consulta (Ej. Pasos para habilita
 
     with st.chat_message("assistant"):
         contenedor_respuesta = st.empty()
-        with st.spinner("Consultando la base de conocimiento..."):
+        with st.spinner("Consultando la base de conocimiento y manuales de proyectos..."):
             try:
-                documentos_recuperados = retriever.invoke(prompt_usuario)
-                contexto_text = "\n\n".join([doc.page_content for doc in documentos_recuperados])
+                archivos_subidos = _subir_archivos_a_gemini(archivos_locales)
                 
-                prompt_final = f"""Eres Toromochito, el asistente virtual de Minera Chinalco Perú S.A. para el área de Compras y Contratos Proyectos.
-                Tu función es responder exclusivamente consultas sobre los procedimientos basándote SOLAMENTE en el contexto proporcionado.
-                Nunca inventes información ni compartas datos comerciales confidenciales.
+                contenido_envio = [
+                    f"{SYSTEM_PROMPT}\n\nConsulta del usuario: {prompt_usuario}"
+                ] + archivos_subidos
 
-                CONTEXTO:
-                {contexto_text}
-
-                CONSULTA: {prompt_usuario}
+                response = client.models.generate_content(
+                    model=MODEL_ID,
+                    contents=contenido_envio,
+                    config=types.GenerateContentConfig(
+                        temperature=0.1,
+                        max_output_tokens=4000,
+                    ),
+                )
                 
-                RESPUESTA:"""
+                # FILTRO DE SEGURIDAD: Extraemos exclusivamente el texto limpio de la respuesta
+                texto_respuesta = response.candidates[0].content.parts[0].text
                 
-                response = llm.invoke(prompt_final)
-                respuesta_final = response.content
-                contenedor_respuesta.markdown(respuesta_final)
+                contenedor_respuesta.markdown(texto_respuesta)
+                respuesta_final = texto_respuesta
                 
             except Exception as e:
-                respuesta_final = f"Ocurrió un error en la generación: {e}"
+                respuesta_final = f"Ocurrió un error al procesar la consulta con Gemini: {e}"
                 contenedor_respuesta.markdown(respuesta_final)
             
     st.session_state.messages.append({"role": "assistant", "content": respuesta_final})
