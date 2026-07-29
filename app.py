@@ -19,7 +19,7 @@ if "GOOGLE_API_KEY" not in os.environ:
 @st.cache_resource(show_spinner=False)
 def inicializar_motor_rag():
     try:
-        # 1. Leer los manuales
+        # 1. Leer los manuales PDF
         loader = PyPDFDirectoryLoader("docs")
         docs = loader.load()
         
@@ -33,8 +33,8 @@ def inicializar_motor_rag():
         if not splits:
             return None, None, "Error: No se pudo fragmentar el texto de los manuales."
 
-        # 3. Vectorizar dejando que la librería tome la llave del sistema automáticamente
-        embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+        # 3. Vectorizar (Usando la sintaxis exacta y actual del modelo de Google)
+        embeddings = GoogleGenerativeAIEmbeddings(model="text-embedding-004")
         vectorstore = FAISS.from_documents(splits, embeddings)
         
         # 4. Configurar la IA 
@@ -44,7 +44,7 @@ def inicializar_motor_rag():
     except Exception as e:
         return None, None, f"Error de conexión con Google: {str(e)}"
 
-# Inicialización
+# Inicialización del motor
 if os.path.exists("docs") and os.listdir("docs"):
     with st.spinner("Procesando manuales de Compras y Contratos..."):
         retriever, llm, status = inicializar_motor_rag()
@@ -52,7 +52,7 @@ if os.path.exists("docs") and os.listdir("docs"):
             st.error(status)
             st.stop()
 else:
-    st.error("Por favor, verifica que la carpeta 'docs' tenga los manuales.")
+    st.error("Por favor, verifica que la carpeta 'docs' tenga los manuales en formato PDF.")
     st.stop()
 
 # Interfaz de Chat
