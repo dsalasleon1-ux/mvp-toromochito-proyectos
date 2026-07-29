@@ -26,7 +26,7 @@ def _get_api_key():
 API_KEY = _get_api_key()
 client = genai.Client(api_key=API_KEY) if API_KEY else None
 
-MODEL_ID = "gemini-2.5-flash"
+MODEL_ID = "gemini-flash-latest"
 
 # ============================================================
 # SYSTEM PROMPT CORPORATIVO
