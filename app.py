@@ -1,7 +1,6 @@
 import streamlit as st
 import os
 from langchain_community.document_loaders import PyPDFDirectoryLoader
-# LÍNEA CORREGIDA:
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from langchain_community.vectorstores import FAISS
@@ -10,7 +9,7 @@ from langchain.prompts import PromptTemplate
 
 # 1. Configuración de la página
 st.set_page_config(page_title="Toromochito 2.0 MVP", page_icon="🤖", layout="wide")
-st.title("🤖 Asistente Toromochito 2.0 (Prueba en Vivo)")
+st.title("🤖 Asistente Toromochito 2.0")
 
 # 2. Configurar API Key
 if "GOOGLE_API_KEY" not in os.environ:
