@@ -1,7 +1,8 @@
 import streamlit as st
 import os
 from langchain_community.document_loaders import PyPDFDirectoryLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+# LÍNEA CORREGIDA:
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from langchain_community.vectorstores import FAISS
 from langchain.chains import RetrievalQA
@@ -46,7 +47,7 @@ def inicializar_motor_rag():
     
     PROMPT = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
     
-    # Uso de RetrievalQA (Universal, reemplaza al método que daba error)
+    # Uso de RetrievalQA
     qa_chain = RetrievalQA.from_chain_type(
         llm=llm,
         chain_type="stuff",
